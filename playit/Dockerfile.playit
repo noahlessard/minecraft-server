@@ -9,8 +9,12 @@ RUN curl -fsSL \
     -o /usr/local/bin/playit \
     && chmod +x /usr/local/bin/playit
 
-RUN groupadd -g 1001 playit && useradd -u 1001 -g playit -r playit
+RUN groupadd -g 1001 playit && useradd -u 1001 -g playit -r playit -d /home/playit \
+    && mkdir -p /home/playit/.config/playit_gg \
+    && chown -R playit:playit /home/playit
+
+COPY --chown=playit:playit start.sh /start.sh
+RUN chmod +x /start.sh
 
 USER playit
-
-CMD ["playit"]
+CMD ["/start.sh"]
