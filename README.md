@@ -22,6 +22,7 @@ echo "PLAYIT_SECRET_KEY=your_key_here" > .env
 
 # 2. Create data directories (ensures correct permissions before first run)
 mkdir -p mc-data/world mc-data/logs backups
+podman unshare chown -R 1000:1000 mc-data backups
 
 # 3. Build images
 podman-compose build
