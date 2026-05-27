@@ -1,0 +1,42 @@
+services:
+  minecraft:
+    build:
+      context: ./minecraft
+      dockerfile: Dockerfile.minecraft
+    volumes:
+      - ./mc-data/world:/server/world
+      - ./mc-data/logs:/server/logs
+      - ./backups:/backups
+    networks:
+      - mc-internal
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  playit:
+    build:
+      context: ./playit
+      dockerfile: Dockerfile.playit
+    environment:
+      SECRET_KEY: ${PLAYIT_SECRET_KEY}
+    networks:
+      - mc-internal
+      - mc-external
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    depends_on:
+      - minecraft
+
+networks:
+  mc-internal:
+    internal: true   # no internet access — minecraft cannot reach outside
+  mc-external:
+    driver: bridge   # playit uses this to reach playit.gg servers

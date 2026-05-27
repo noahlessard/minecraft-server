@@ -1,0 +1,48 @@
+FROM eclipse-temurin:21-jre-jammy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates jq \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 1000 minecraft && useradd -u 1000 -g minecraft -r minecraft
+
+WORKDIR /server
+
+# Download latest stable PaperMC
+RUN PAPER_VERSION=$(curl -fsSL https://api.papermc.io/v2/projects/paper \
+        | jq -r '.versions[-1]') \
+    && PAPER_BUILD=$(curl -fsSL \
+        "https://api.papermc.io/v2/projects/paper/versions/${PAPER_VERSION}/builds" \
+        | jq -r '[.builds[] | select(.channel == "default")] | last | .build') \
+    && curl -fsSL \
+        "https://api.papermc.io/v2/projects/paper/versions/${PAPER_VERSION}/builds/${PAPER_BUILD}/downloads/paper-${PAPER_VERSION}-${PAPER_BUILD}.jar" \
+        -o server.jar \
+    && echo "Downloaded Paper ${PAPER_VERSION} build ${PAPER_BUILD}"
+
+# Download latest Terralith datapack (staged; entrypoint installs into world/datapacks/)
+RUN mkdir -p /server/datapack-staging \
+    && DATA=$(curl -fsSL "https://api.modrinth.com/v2/project/terralith/version") \
+    && URL=$(echo "$DATA" \
+        | jq -r '[.[] | select(.version_type == "release")] | .[0].files[0].url') \
+    && FILENAME=$(echo "$DATA" \
+        | jq -r '[.[] | select(.version_type == "release")] | .[0].files[0].filename') \
+    && curl -fsSL "$URL" -o "/server/datapack-staging/${FILENAME}" \
+    && echo "Downloaded Terralith: ${FILENAME}"
+
+RUN echo "eula=true" > eula.txt
+
+# Pre-create volume-mounted dirs with correct ownership
+RUN mkdir -p /server/world /server/logs /backups
+
+COPY --chown=minecraft:minecraft server.properties .
+COPY --chown=minecraft:minecraft whitelist.json .
+COPY --chown=minecraft:minecraft backup.sh /server/backup.sh
+COPY entrypoint.sh /entrypoint.sh
+
+RUN chmod +x /server/backup.sh /entrypoint.sh \
+    && chown -R minecraft:minecraft /server /backups
+
+USER minecraft
+EXPOSE 25565
+
+ENTRYPOINT ["/entrypoint.sh"]
