@@ -7,8 +7,10 @@ services:
       - ./mc-data/world:/server/world
       - ./mc-data/logs:/server/logs
       - ./backups:/backups
+      - ./mc-data/ops.json:/server/ops.json
     networks:
-      - mc-internal
+      mc-internal:
+        ipv4_address: 10.89.1.2
     cap_drop:
       - ALL
     security_opt:
@@ -38,6 +40,9 @@ services:
 
 networks:
   mc-internal:
-    internal: true   # no internet access — minecraft cannot reach outside
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.89.1.0/24
   mc-external:
-    driver: bridge   # playit uses this to reach playit.gg servers
+    driver: bridge
